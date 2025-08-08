@@ -1,14 +1,31 @@
+import { createProgram } from "./utils";
+
+function createFillVertices(points: [number, number][]): Float32Array {
+  const fillVerts: number[] = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const [x, y] = points[i];
+    fillVerts.push(x, -1); // projection onto X axis (lower bound)
+    fillVerts.push(x, y);  // the graph point itself
+  }
+
+  return new Float32Array(fillVerts);
+}
+
+
 export function drawGraph(
   gl: WebGLRenderingContext,
   data: [number, number][],
   options?: {
     color?: [number, number, number, number],
+    fillColor?: [number, number, number, number],
     lineWidth?: number
   }
 ) {
   if (data.length === 0) return;
 
   const color = options?.color || [0.2, 0.7, 1, 1];
+  const fillColor = options?.fillColor || [0.2, 0.7, 1, 0.3];
   const lineWidth = options?.lineWidth || 2;
 
   // Determine data bounds
@@ -16,61 +33,61 @@ export function drawGraph(
   const xMin = Math.min(...xs), xMax = Math.max(...xs);
   const yMin = Math.min(...ys), yMax = Math.max(...ys);
 
-  // Normalize to WebGL space (-1..1)
-  const verts = new Float32Array(data.flatMap(([x, y]) => [
+  // Normalize points
+  const normalized = data.flatMap(([x, y]) => [
     ((x - xMin) / (xMax - xMin)) * 2 - 1,
     ((y - yMin) / (yMax - yMin)) * 2 - 1
-  ]));
+  ]);
 
-  // Shaders
+  // Compile shaders (the same for line and fill)
   const vs = `
     attribute vec2 a_pos;
-    void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+    void main() {
+      gl_Position = vec4(a_pos, 0.0, 1.0);
+    }
   `;
   const fs = `
     precision mediump float;
     uniform vec4 u_color;
-    void main() { gl_FragColor = u_color; }
+    void main() {
+      gl_FragColor = u_color;
+    }
   `;
 
-  const prog = createProgram(gl, vs, fs);
-  gl.useProgram(prog);
+  const program = createProgram(gl, vs, fs);
+  gl.useProgram(program);
 
-  const buf = gl.createBuffer()!;
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(program, 'a_pos');
+  const uColor = gl.getUniformLocation(program, 'u_color');
 
-  const posLoc = gl.getAttribLocation(prog, 'a_pos');
-  gl.enableVertexAttribArray(posLoc);
-  gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+  // --- Draw fill ---
 
-  const colorLoc = gl.getUniformLocation(prog, 'u_color');
-  gl.uniform4fv(colorLoc, color);
+  // Create vertices for fill
+  const fillVerts = createFillVertices(
+    normalized.reduce<[number, number][]>((acc, val, i) => {
+      if (i % 2 === 0) acc.push([val, normalized[i + 1]]);
+      return acc;
+    }, [])
+  );
 
+  const fillBuffer = gl.createBuffer()!;
+  gl.bindBuffer(gl.ARRAY_BUFFER, fillBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, fillVerts, gl.STATIC_DRAW);
+
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  gl.uniform4fv(uColor, fillColor);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, fillVerts.length / 2);
+
+  // --- Draw line on top ---
+  const lineVerts = new Float32Array(normalized);
+  const lineBuffer = gl.createBuffer()!;
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, lineVerts, gl.STATIC_DRAW);
+
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+  gl.uniform4fv(uColor, color);
   gl.lineWidth(lineWidth);
   gl.drawArrays(gl.LINE_STRIP, 0, data.length);
-}
-
-// Minimal helper functions
-function compileShader(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
-  const sh = gl.createShader(type)!;
-  gl.shaderSource(sh, src);
-  gl.compileShader(sh);
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-    throw new Error(gl.getShaderInfoLog(sh) || 'Shader error');
-  }
-  return sh;
-}
-
-function createProgram(gl: WebGLRenderingContext, vsSrc: string, fsSrc: string): WebGLProgram {
-  const vs = compileShader(gl, gl.VERTEX_SHADER, vsSrc);
-  const fs = compileShader(gl, gl.FRAGMENT_SHADER, fsSrc);
-  const p = gl.createProgram()!;
-  gl.attachShader(p, vs);
-  gl.attachShader(p, fs);
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-    throw new Error(gl.getProgramInfoLog(p) || 'Program error');
-  }
-  return p;
 }
