@@ -1,32 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Okotoki Test Task</title>
-	<style>
-		html,
-		body {
-			height: 100%;
-			margin: 0;
-			background: #0f1720;
-			display: flex;
-			align-items: center;
-			justify-content: center
-		}
-
-		canvas {
-			width: 760px;
-			height: 500px;
-			box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6)
-		}
-	</style>
+  <meta charset="UTF-8" />
+  <title>Okotoki</title>
+  <style>
+    body, html { margin: 0; padding: 0; overflow: hidden; }
+    canvas { display: block; background: #222; }
+  </style>
 </head>
-
 <body>
-	<canvas id="canvas"></canvas>
-	<script src="./main.js"></script>
+  <canvas id="canvas" width="800" height="300"></canvas>
+  <script type="module" src="/src/main.ts"></script>
 </body>
-
 </html>

@@ -1,0 +1,63 @@
+import { loadImage, createProgram } from './utils';
+import { vertexShaderSource, fragmentShaderSource } from './shaders';
+import { TextRenderer } from './textRenderer';
+
+(async () => {
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+  const gl = canvas.getContext('webgl');
+  if (!gl) {
+    alert('WebGL not supported');
+    return;
+  }
+
+  const pixelRange = 4;
+
+  // Load atlas image and JSON from /public folder
+  const [atlasImage, atlasData] = await Promise.all([
+    loadImage('/atlas_regular.png'),
+    fetch('/atlas_regular.json').then(res => res.json())
+  ]);
+
+  const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
+  gl.useProgram(program);
+
+  // Setup texture
+  const texture = gl.createTexture();
+  if (!texture) throw new Error('Failed to create texture');
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlasImage);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Setup orthographic projection matrix for 2D pixel space
+  function ortho(left: number, right: number, bottom: number, top: number) {
+    return new Float32Array([
+      2 / (right - left), 0, 0, 0,
+      0, 2 / (top - bottom), 0, 0,
+      0, 0, -1, 0,
+      -(right + left) / (right - left), -(top + bottom) / (top - bottom), 0, 1
+    ]);
+  }
+  const proj = ortho(0, canvas.width, canvas.height, 0);
+  const u_projection = gl.getUniformLocation(program, 'u_projection');
+  gl.uniformMatrix4fv(u_projection, false, proj);
+
+  // Initialize the text renderer
+  const textRenderer = new TextRenderer(gl, atlasData, atlasImage, pixelRange);
+  textRenderer.setupAttributes(program);
+
+
+  // Render some text
+  textRenderer.renderText(program, 'Hello, WebGL!', 20, 40, 48, [1, 1, 1, 1]);
+  textRenderer.renderText(program, 'TESTING, test', 20, 80, 48, [1, 0.2, 0.2, 1]);
+})();
