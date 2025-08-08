@@ -1,6 +1,8 @@
 import { loadImage, createProgram } from './utils';
 import { vertexShaderSource, fragmentShaderSource } from './shaders';
 import { TextRenderer } from './textRenderer';
+import { drawGraph } from './graph';
+import { generatePoints } from './utils/generatePoints';
 
 (async () => {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -10,7 +12,7 @@ import { TextRenderer } from './textRenderer';
     return;
   }
 
-  const pixelRange = 4;
+  const pixelRange = 48;
 
   // Load atlas image and JSON from /public folder
   const [atlasImage, atlasData] = await Promise.all([
@@ -36,7 +38,7 @@ import { TextRenderer } from './textRenderer';
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0, 0, 0, 0);
+  gl.clearColor(1, 1, 1, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   // Setup orthographic projection matrix for 2D pixel space
@@ -58,6 +60,13 @@ import { TextRenderer } from './textRenderer';
 
 
   // Render some text
-  textRenderer.renderText(program, 'Hello, WebGL!', 20, 40, 48, [1, 1, 1, 1]);
-  textRenderer.renderText(program, 'TESTING, test', 20, 80, 48, [1, 0.2, 0.2, 1]);
+  textRenderer.renderText(program, 'BTC / USDT', 260, 40, 26, [0, 0, 0, 1]);
+
+  // Generate 200 points simulating currency data, starting at 38.5 with 0.5% volatility
+  const currencyData = generatePoints(200, 38.5, 0.005); 
+
+  drawGraph(gl, currencyData, {
+    color: [1, 0.5, 0, 1],
+    lineWidth: 10,
+  });
 })();
