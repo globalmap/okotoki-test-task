@@ -67,6 +67,24 @@ export class TextRenderer {
     gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 16, 8);
   }
 
+  public measureTextWidth(text: string, size: number): number {
+    const scale = size / this.atlasData.info.size;
+    let width = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text.charCodeAt(i);
+      const glyph = this.atlasData.chars.find(g => g.id === ch);
+      if (!glyph) {
+        width += scale * this.atlasData.info.size * 0.5; // пробіл
+        continue;
+      }
+      width += glyph.xadvance * scale;
+    }
+
+    return width;
+  }
+
+
   public renderText(program: WebGLProgram, text: string, x: number, y: number, size: number, color: [number, number, number, number]) {
     const gl = this.gl;
     const scale = size / this.atlasData.info.size;

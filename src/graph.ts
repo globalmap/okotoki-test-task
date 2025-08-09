@@ -33,10 +33,14 @@ export function drawGraph(
   const xMin = Math.min(...xs), xMax = Math.max(...xs);
   const yMin = Math.min(...ys), yMax = Math.max(...ys);
 
+  // Limit the graph to the upper half
+  const yScale = 0.2;        
+  const yOffset = 0.0;      
+
   // Normalize points
   const normalized = data.flatMap(([x, y]) => [
     ((x - xMin) / (xMax - xMin)) * 2 - 1,
-    ((y - yMin) / (yMax - yMin)) * 2 - 1
+    (((y - yMin) / (yMax - yMin)) * 2 - 1) * yScale + yOffset
   ]);
 
   // Compile shaders (the same for line and fill)

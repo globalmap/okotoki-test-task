@@ -58,9 +58,13 @@ import { generatePoints } from './utils/generatePoints';
   const textRenderer = new TextRenderer(gl, atlasData, atlasImage, pixelRange);
   textRenderer.setupAttributes(program);
 
+  const title = 'BTC / USDT';
+  const fontSize = 26;
+
+  const textWidth = textRenderer.measureTextWidth(title, fontSize);
 
   // Render some text
-  textRenderer.renderText(program, 'BTC / USDT', 260, 40, 26, [0, 0, 0, 1]);
+  textRenderer.renderText(program, title, (canvas.width - textWidth) / 2, 40, fontSize, [0, 0, 0, 1]);
 
   // Generate 200 points simulating currency data, starting at 38.5 with 0.5% volatility
   const currencyData = generatePoints(200, 38.5, 0.005); 
