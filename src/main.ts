@@ -71,14 +71,11 @@ import { generatePoints } from './utils/generatePoints';
   const boldTextWidth = textRenderer.measureTextWidth(boldPart, boldFontSize, 'bold');
   const boldX = (canvas.width - textRenderer.measureTextWidth(title, fontSize, 'regular')) / 2;
 
-  // Render the bold part in gray
-  textRenderer.renderText(program, boldPart, boldX, 40, boldFontSize, [0.4, 0.4, 0.4, 1], 'bold');
+
 
   // Render the remaining part of the title in regular font
   const regularPart = ' · Binance';
   const regularX = boldX + boldTextWidth;
-
-  textRenderer.renderText(program, regularPart, regularX, 40, fontSize, [0.5, 0.5, 0.5, 1], 'regular');
 
   // Render the price in bold and black
   const price = '114,900.00';
@@ -86,15 +83,11 @@ import { generatePoints } from './utils/generatePoints';
   const priceWidth = textRenderer.measureTextWidth(price, priceFontSize, 'bold');
   const priceX = (canvas.width - priceWidth) / 2;
 
-  textRenderer.renderText(program, price, priceX, 60, priceFontSize, [0, 0, 0, 1], 'bold');
-
   // Render the percentage change in blue
   const percentageChange = '1.00%';
   const percentageFontSize = 20;
   const percentageWidth = textRenderer.measureTextWidth(percentageChange, percentageFontSize, 'regular');
   const percentageX = (canvas.width - percentageWidth) / 2 - 40; // Adjusted spacing for better alignment
-
-  textRenderer.renderText(program, percentageChange, percentageX, 130, percentageFontSize, [0, 0, 1, 1], 'regular');
 
   // Render the additional value in blue
   const additionalValue = '1,140.87';
@@ -102,18 +95,11 @@ import { generatePoints } from './utils/generatePoints';
   const additionalValueWidth = textRenderer.measureTextWidth(additionalValue, additionalFontSize, 'regular');
   const additionalX = (canvas.width - additionalValueWidth) / 2 + 40; // Adjusted spacing for better alignment
 
-  textRenderer.renderText(program, additionalValue, additionalX, 130, additionalFontSize, [0, 0, 1, 1], 'regular');
-
 
   // Generate 200 points simulating currency data, starting at 38.5 with 0.5% volatility
   const currencyData = generatePoints(200, 38.5, 0.005);
 
-  drawGraph(gl, currencyData, {
-    color: [1, 0.5, 0, 1],
-    lineWidth: 10,
-  });
-
-  // Add a new point every 100ms
+  // Add a new point every 300ms
   setInterval(() => {
     const lastPoint = currencyData[currencyData.length - 1];
     const newPoint = generatePoints(1, lastPoint[1], 0.005)[0]; // Generate only one new point
@@ -134,7 +120,7 @@ import { generatePoints } from './utils/generatePoints';
     // Re-render the text
     textRenderer.renderText(program, boldPart, boldX, 40, boldFontSize, [0.4, 0.4, 0.4, 1], 'bold');
     textRenderer.renderText(program, regularPart, regularX, 40, fontSize, [0.5, 0.5, 0.5, 1], 'regular');
-    textRenderer.renderText(program, price, priceX, 60, priceFontSize, [0, 0, 0, 1], 'bold');
+    textRenderer.renderText(program, price, priceX, 70, priceFontSize, [0, 0, 0, 1], 'bold');
     textRenderer.renderText(program, percentageChange, percentageX, 130, percentageFontSize, [0, 0, 1, 1], 'regular');
     textRenderer.renderText(program, additionalValue, additionalX, 130, additionalFontSize, [0, 0, 1, 1], 'regular');
 
@@ -142,6 +128,7 @@ import { generatePoints } from './utils/generatePoints';
     drawGraph(gl, currencyData, {
       color: [1, 0.5, 0, 1],
       lineWidth: 10,
+      fillColor: [0.0, 0.5, 1.0, 0.8]
     });
   }, 300);
 })();
