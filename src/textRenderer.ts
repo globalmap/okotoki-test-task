@@ -32,17 +32,13 @@ const quadVerts = new Float32Array([
 
 export class TextRenderer {
   private gl: WebGLRenderingContext;
-  private atlasData: AtlasData;
-  private atlasWidth: number;
-  private atlasHeight: number;
+  private atlases: { [key: string]: { data: AtlasData; width: number; height: number; texture: WebGLTexture } };
   private pixelRange: number;
   private buffer: WebGLBuffer;
 
-  constructor(gl: WebGLRenderingContext, atlasData: AtlasData, atlasImage: HTMLImageElement, pixelRange: number) {
+  constructor(gl: WebGLRenderingContext, pixelRange: number) {
     this.gl = gl;
-    this.atlasData = atlasData;
-    this.atlasWidth = atlasImage.width;
-    this.atlasHeight = atlasImage.height;
+    this.atlases = {};
     this.pixelRange = pixelRange;
 
     const buffer = gl.createBuffer();
@@ -51,6 +47,26 @@ export class TextRenderer {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.DYNAMIC_DRAW);
+  }
+
+  public addAtlas(key: string, atlasData: AtlasData, atlasImage: HTMLImageElement) {
+    const gl = this.gl;
+    const texture = gl.createTexture();
+    if (!texture) throw new Error('Failed to create texture');
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlasImage);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    this.atlases[key] = {
+      data: atlasData,
+      width: atlasImage.width,
+      height: atlasImage.height,
+      texture,
+    };
   }
 
   public setupAttributes(program: WebGLProgram) {
@@ -67,15 +83,17 @@ export class TextRenderer {
     gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 16, 8);
   }
 
-  public measureTextWidth(text: string, size: number): number {
-    const scale = size / this.atlasData.info.size;
+  public measureTextWidth(text: string, size: number, atlasKey: string): number {
+    const atlas = this.atlases[atlasKey];
+    if (!atlas) throw new Error(`Atlas with key "${atlasKey}" not found`);
+    const scale = size / atlas.data.info.size;
     let width = 0;
 
     for (let i = 0; i < text.length; i++) {
       const ch = text.charCodeAt(i);
-      const glyph = this.atlasData.chars.find(g => g.id === ch);
+      const glyph = atlas.data.chars.find(g => g.id === ch);
       if (!glyph) {
-        width += scale * this.atlasData.info.size * 0.5; // пробіл
+        width += scale * atlas.data.info.size * 0.5; // пробіл
         continue;
       }
       width += glyph.xadvance * scale;
@@ -84,10 +102,15 @@ export class TextRenderer {
     return width;
   }
 
-
-  public renderText(program: WebGLProgram, text: string, x: number, y: number, size: number, color: [number, number, number, number]) {
+  public renderText(program: WebGLProgram, text: string, x: number, y: number, size: number, color: [number, number, number, number], atlasKey: string) {
+    const atlas = this.atlases[atlasKey];
+    if (!atlas) throw new Error(`Atlas with key "${atlasKey}" not found`);
     const gl = this.gl;
-    const scale = size / this.atlasData.info.size;
+
+    // Bind the correct texture for the atlas
+    gl.bindTexture(gl.TEXTURE_2D, atlas.texture);
+
+    const scale = size / atlas.data.info.size;
     let cursorX = x;
     let cursorY = y;
 
@@ -97,20 +120,20 @@ export class TextRenderer {
     const u_translation = gl.getUniformLocation(program, 'u_translation');
 
     gl.uniform4f(u_color, color[0], color[1], color[2], color[3]);
-    gl.uniform1f(u_pxRange, this.pixelRange / this.atlasHeight);
+    gl.uniform1f(u_pxRange, this.pixelRange / atlas.height);
 
     for (let i = 0; i < text.length; i++) {
       const ch = text.charCodeAt(i);
-      const glyph = this.atlasData.chars.find(g => g.id === ch);
+      const glyph = atlas.data.chars.find(g => g.id === ch);
       if (!glyph) {
-        cursorX += scale * this.atlasData.info.size * 0.5;
+        cursorX += scale * atlas.data.info.size * 0.5;
         continue;
       }
 
-      const uvLeft = glyph.x / this.atlasWidth;
-      const uvRight = (glyph.x + glyph.width) / this.atlasWidth;
-      const uvTop = glyph.y / this.atlasHeight;
-      const uvBottom = (glyph.y + glyph.height) / this.atlasHeight;
+      const uvLeft = glyph.x / atlas.width;
+      const uvRight = (glyph.x + glyph.width) / atlas.width;
+      const uvTop = glyph.y / atlas.height;
+      const uvBottom = (glyph.y + glyph.height) / atlas.height;
 
       const glyphWidth = glyph.width;
       const glyphHeight = glyph.height;

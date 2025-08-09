@@ -15,9 +15,11 @@ import { generatePoints } from './utils/generatePoints';
   const pixelRange = 48;
 
   // Load atlas image and JSON from /public folder
-  const [atlasImage, atlasData] = await Promise.all([
+  const [atlasImage, atlasData, boldAtlasImage, boldAtlasData] = await Promise.all([
     loadImage('/atlas_regular.png'),
-    fetch('/atlas_regular.json').then(res => res.json())
+    fetch('/atlas_regular.json').then(res => res.json()),
+    loadImage('/atlas_bold.png'),
+    fetch('/atlas_bold.json').then(res => res.json())
   ]);
 
   const program = createProgram(gl, vertexShaderSource, fragmentShaderSource);
@@ -55,19 +57,56 @@ import { generatePoints } from './utils/generatePoints';
   gl.uniformMatrix4fv(u_projection, false, proj);
 
   // Initialize the text renderer
-  const textRenderer = new TextRenderer(gl, atlasData, atlasImage, pixelRange);
+  const textRenderer = new TextRenderer(gl, pixelRange);
+  textRenderer.addAtlas('regular', atlasData, atlasImage);
+  textRenderer.addAtlas('bold', boldAtlasData, boldAtlasImage);
   textRenderer.setupAttributes(program);
 
-  const title = 'BTC / USDT';
-  const fontSize = 26;
+  const title = 'BTC / USDT · Binance';
+  const fontSize = 24;
 
-  const textWidth = textRenderer.measureTextWidth(title, fontSize);
+  // Measure and render the bold part of the title
+  const boldPart = 'BTC / USDT';
+  const boldFontSize = 24;
+  const boldTextWidth = textRenderer.measureTextWidth(boldPart, boldFontSize, 'bold');
+  const boldX = (canvas.width - textRenderer.measureTextWidth(title, fontSize, 'regular')) / 2;
 
-  // Render some text
-  textRenderer.renderText(program, title, (canvas.width - textWidth) / 2, 40, fontSize, [0, 0, 0, 1]);
+  // Render the bold part in gray
+  textRenderer.renderText(program, boldPart, boldX, 40, boldFontSize, [0.4, 0.4, 0.4, 1], 'bold');
+
+  // Render the remaining part of the title in regular font
+  const regularPart = ' · Binance';
+  const regularX = boldX + boldTextWidth;
+
+  textRenderer.renderText(program, regularPart, regularX, 40, fontSize, [0.5, 0.5, 0.5, 1], 'regular');
+
+  // Render the price in bold and black
+  const price = '114,900.00';
+  const priceFontSize = 48;
+  const priceWidth = textRenderer.measureTextWidth(price, priceFontSize, 'bold');
+  const priceX = (canvas.width - priceWidth) / 2;
+
+  textRenderer.renderText(program, price, priceX, 60, priceFontSize, [0, 0, 0, 1], 'bold');
+
+  // Render the percentage change in blue
+  const percentageChange = '1.00%';
+  const percentageFontSize = 20;
+  const percentageWidth = textRenderer.measureTextWidth(percentageChange, percentageFontSize, 'regular');
+  const percentageX = (canvas.width - percentageWidth) / 2 - 40; // Adjusted spacing for better alignment
+
+  textRenderer.renderText(program, percentageChange, percentageX, 130, percentageFontSize, [0, 0, 1, 1], 'regular');
+
+  // Render the additional value in blue
+  const additionalValue = '1,140.87';
+  const additionalFontSize = 20;
+  const additionalValueWidth = textRenderer.measureTextWidth(additionalValue, additionalFontSize, 'regular');
+  const additionalX = (canvas.width - additionalValueWidth) / 2 + 40; // Adjusted spacing for better alignment
+
+  textRenderer.renderText(program, additionalValue, additionalX, 130, additionalFontSize, [0, 0, 1, 1], 'regular');
+
 
   // Generate 200 points simulating currency data, starting at 38.5 with 0.5% volatility
-  const currencyData = generatePoints(200, 38.5, 0.005); 
+  const currencyData = generatePoints(200, 38.5, 0.005);
 
   drawGraph(gl, currencyData, {
     color: [1, 0.5, 0, 1],
