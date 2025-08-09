@@ -112,4 +112,36 @@ import { generatePoints } from './utils/generatePoints';
     color: [1, 0.5, 0, 1],
     lineWidth: 10,
   });
+
+  // Add a new point every 100ms
+  setInterval(() => {
+    const lastPoint = currencyData[currencyData.length - 1];
+    const newPoint = generatePoints(1, lastPoint[1], 0.005)[0]; // Generate only one new point
+    currencyData.push([lastPoint[0] + 1, newPoint[1]]); // Append the new point with incremented x value
+    currencyData.shift(); // Keep the array size constant
+
+    // Clear the canvas and reset background color
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Reset WebGL state
+    gl.useProgram(program);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    // Re-initialize text renderer attributes
+    textRenderer.setupAttributes(program);
+
+    // Re-render the text
+    textRenderer.renderText(program, boldPart, boldX, 40, boldFontSize, [0.4, 0.4, 0.4, 1], 'bold');
+    textRenderer.renderText(program, regularPart, regularX, 40, fontSize, [0.5, 0.5, 0.5, 1], 'regular');
+    textRenderer.renderText(program, price, priceX, 60, priceFontSize, [0, 0, 0, 1], 'bold');
+    textRenderer.renderText(program, percentageChange, percentageX, 130, percentageFontSize, [0, 0, 1, 1], 'regular');
+    textRenderer.renderText(program, additionalValue, additionalX, 130, additionalFontSize, [0, 0, 1, 1], 'regular');
+
+    // Re-draw the graph
+    drawGraph(gl, currencyData, {
+      color: [1, 0.5, 0, 1],
+      lineWidth: 10,
+    });
+  }, 300);
 })();
